@@ -21,7 +21,8 @@ const getUsersInRoom = async (room) => {
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: "https://abyssinia-chat-app-xyz.vercel.app", 
+     
     methods: ["GET", "POST"]
   }
 });
