@@ -1,0 +1,16 @@
+# Node.js dependency folders
+/node_modules/
+/chat-server/node_modules/
+/front/node_modules/
+
+# Frontend build output
+/front/build/
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables file (good practice)
+.env
+```    Save this file. This prevents thousands of unnecessary files from being uploaded.
