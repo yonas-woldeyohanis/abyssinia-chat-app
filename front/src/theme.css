@@ -1,0 +1,23 @@
+/* front/src/theme.css */
+
+
+body {
+  background-color: #f0f2f5 !important; /* A light gray, common in modern apps */
+}
+
+
+.my-message-bubble {
+  background-color: #0084ff; /* A brighter, more modern blue */
+  color: white;
+}
+
+.other-message-bubble {
+  background-color: #e4e6eb; /* A soft gray for received messages */
+  color: #050505; /* A dark gray for text, not pure black */
+}
+
+
+.chat-navbar {
+  padding-top: 0.75rem !important;
+  padding-bottom: 0.75rem !important;
+}

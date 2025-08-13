@@ -4,47 +4,25 @@ import { Check, CheckAll, EmojiSmile } from 'react-bootstrap-icons';
 import EmojiPicker from 'emoji-picker-react';
 import './MessageItem.css';
 
-// --- THIS COMPONENT IS NOW SMARTER ---
-// It receives more props to handle the click logic internally.
 const Reactions = ({ reactions, currentUser, socket, messageId }) => {
   if (!reactions || reactions.length === 0) return null;
-
   const handleReactionClick = (emoji) => {
-    // This function runs when a user clicks on a reaction badge.
-    
-    // First, check if the current user is one of the people who made this specific reaction.
-    const userMadeThisReaction = reactions.some(
-      (r) => r.emoji === emoji && r.user === currentUser
-    );
-
-    // If they did, we send the exact same 'message_reacted' event.
-    // The server's existing toggle logic will handle removing it.
+    const userMadeThisReaction = reactions.some((r) => r.emoji === emoji && r.user === currentUser);
     if (userMadeThisReaction) {
       socket.emit('message_reacted', {
         messageId: messageId,
         reaction: { emoji: emoji, user: currentUser }
       });
     }
-    // If they didn't make this reaction, clicking does nothing.
   };
-
   const reactionSummary = reactions.reduce((summary, reaction) => {
     summary[reaction.emoji] = (summary[reaction.emoji] || 0) + 1;
     return summary;
   }, {});
-
   return (
     <div className="d-flex gap-1 mt-1">
       {Object.entries(reactionSummary).map(([emoji, count]) => (
-        <Badge 
-          pill 
-          bg="secondary" 
-          text="white" 
-          key={emoji} 
-          className="d-flex align-items-center"
-          onClick={() => handleReactionClick(emoji)} // Add the onClick handler
-          style={{ cursor: 'pointer' }} // Add the pointer cursor style
-        >
+        <Badge pill bg="secondary" text="white" key={emoji} className="d-flex align-items-center" onClick={() => handleReactionClick(emoji)} style={{ cursor: 'pointer' }}>
           {emoji} <span className="ms-1">{count}</span>
         </Badge>
       ))}
@@ -64,7 +42,6 @@ function MessageItem({ msg, currentUser, socket }) {
       socket.emit('message_reacted', { messageId: msg._id, reaction });
     }
   };
-
   const renderMessageStatus = () => {
     if (msg.author !== currentUser) return null;
     if (msg.status === 'seen') {
@@ -72,13 +49,10 @@ function MessageItem({ msg, currentUser, socket }) {
     }
     return <Check key="sent" size={18} className="ms-2" />;
   };
-
   if (msg.author === 'System') {
     return <ListGroup.Item className="border-0 text-center text-muted fst-italic py-1">{msg.text}</ListGroup.Item>;
   }
-
   const isMyMessage = msg.author === currentUser;
-
   const emojiPickerPopover = (
     <Popover id={`popover-basic-${msg._id}`}>
       <Popover.Body style={{ padding: 0 }}>
@@ -86,12 +60,12 @@ function MessageItem({ msg, currentUser, socket }) {
       </Popover.Body>
     </Popover>
   );
-
   return (
     <ListGroup.Item className="message-list-item border-0 d-flex flex-column py-1">
       <div className={`d-flex align-items-center ${isMyMessage ? 'justify-content-end' : 'justify-content-start'}`}>
         <div 
-          className={`p-2 rounded ${isMyMessage ? 'bg-primary text-white' : 'bg-light text-dark'}`}
+          // Use our new custom classes instead of Bootstrap's bg-primary / bg-light
+          className={`p-2 rounded ${isMyMessage ? 'my-message-bubble' : 'other-message-bubble'}`}
           style={{ maxWidth: '70%' }}
         >
           {!isMyMessage && <div className="fw-bold small">{msg.author}</div>}
@@ -103,7 +77,6 @@ function MessageItem({ msg, currentUser, socket }) {
             </div>
           </div>
         </div>
-        
         <OverlayTrigger trigger="click" placement="top" overlay={emojiPickerPopover} rootClose>
           <Button variant="light" size="sm" className="reaction-button border-0 ms-1">
             <EmojiSmile />
@@ -111,7 +84,6 @@ function MessageItem({ msg, currentUser, socket }) {
         </OverlayTrigger>
       </div>
       <div className={`d-flex ${isMyMessage ? 'justify-content-end' : 'justify-content-start'}`}>
-         {/* Pass the new props down to the Reactions component */}
          <Reactions 
             reactions={msg.reactions} 
             currentUser={currentUser} 
@@ -122,5 +94,4 @@ function MessageItem({ msg, currentUser, socket }) {
     </ListGroup.Item>
   );
 }
-
 export default MessageItem;

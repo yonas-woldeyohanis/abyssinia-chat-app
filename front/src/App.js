@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import ChatPage from './ChatPage';
-
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 
 const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
@@ -14,14 +13,11 @@ function App() {
   const [usersInRoom, setUsersInRoom] = useState([]);
   const [typingUsers, setTypingUsers] = useState([]);
   const [otherUser, setOtherUser] = useState('');
-  
-  
   const [error, setError] = useState('');
 
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
 
-  
   useEffect(() => {
     socket.on('chat_history', (history) => setMessages(history));
     socket.on('chat message', (msg) => setMessages((prev) => [...prev, msg]));
@@ -35,7 +31,6 @@ function App() {
         )
       );
     });
-
     return () => {
       socket.off('chat_history');
       socket.off('chat message');
@@ -50,31 +45,22 @@ function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-
- 
   const handleJoinChat = (e) => {
     e.preventDefault();
-    setError(''); 
-
-    
+    setError('');
     if (username.trim().toLowerCase() === otherUser.trim().toLowerCase()) {
       setError('Your name and the other user\'s name cannot be the same.');
-      return; 
+      return;
     }
-
-    
     if (username.trim().length < 2 || otherUser.trim().length < 2) {
       setError('Both names must be at least 2 characters long.');
-      return; 
+      return;
     }
-
-    
     const generatedRoomID = [username, otherUser].sort().join('-');
     setRoom(generatedRoomID);
     socket.emit('join_room', { username, room: generatedRoomID });
     setHasJoined(true);
   };
-
 
   const handleSendMessage = (e) => {
     e.preventDefault();
@@ -96,7 +82,8 @@ function App() {
   };
 
   return (
-    <Container fluid className="vh-100 d-flex flex-column p-0">
+    // Use a standard <Container> which has a max-width and is centered.
+    <Container className="d-flex flex-column vh-100 py-4">
       {hasJoined ? (
         <ChatPage
           socket={socket}
@@ -111,35 +98,20 @@ function App() {
         />
       ) : (
         <Row className="justify-content-center align-items-center flex-grow-1">
-          <Col md={4}>
+          <Col md={5}>
             <Card>
               <Card.Body>
                 <Card.Title as="h2" className="text-center mb-4">Start a Conversation</Card.Title>
                 <Form onSubmit={handleJoinChat}>
                   <Form.Group className="mb-3">
                     <Form.Label>Your Name</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter your name..."
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      required
-                    />
+                    <Form.Control type="text" placeholder="Enter your name..." value={username} onChange={(e) => setUsername(e.target.value)} required />
                   </Form.Group>
                   <Form.Group className="mb-3">
                     <Form.Label>Chat with (Their Name)</Form.Label>
-                    <Form.Control
-                      type="text"
-                      placeholder="Enter their name..."
-                      value={otherUser}
-                      onChange={(e) => setOtherUser(e.target.value)}
-                      required
-                    />
+                    <Form.Control type="text" placeholder="Enter their name..." value={otherUser} onChange={(e) => setOtherUser(e.target.value)} required />
                   </Form.Group>
-                  
-               
                   {error && <Alert variant="danger" className="mt-3">{error}</Alert>}
-
                   <div className="d-grid mt-3">
                     <Button variant="primary" type="submit">Start Chat</Button>
                   </div>
@@ -150,7 +122,7 @@ function App() {
         </Row>
       )}
     </Container>
-  ); 
+  );
 }
 
 export default App;
