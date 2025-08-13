@@ -1,32 +1,42 @@
-// front/src/components/MessageItem.js (Corrected Hybrid Version)
+// front/src/components/MessageItem.js (With Emoji Reactions)
 
-import React, { useEffect } from 'react';
-import { ListGroup } from 'react-bootstrap';
-import { Check, CheckAll } from 'react-bootstrap-icons';
+import React from 'react';
+import { ListGroup, OverlayTrigger, Popover, Badge, Button } from 'react-bootstrap';
+import { Check, CheckAll, EmojiSmile } from 'react-bootstrap-icons';
+import EmojiPicker from 'emoji-picker-react';
+import './MessageItem.css'; // Import the component-specific CSS
+
+// This component will group and display the reactions
+const Reactions = ({ reactions }) => {
+  if (!reactions || reactions.length === 0) return null;
+  const reactionSummary = reactions.reduce((summary, reaction) => {
+    summary[reaction.emoji] = (summary[reaction.emoji] || 0) + 1;
+    return summary;
+  }, {});
+
+  return (
+    <div className="d-flex gap-1 mt-1">
+      {Object.entries(reactionSummary).map(([emoji, count]) => (
+        <Badge pill bg="secondary" text="white" key={emoji} className="d-flex align-items-center">
+          {emoji} <span className="ms-1">{count}</span>
+        </Badge>
+      ))}
+    </div>
+  );
+};
 
 const formatTimestamp = (isoString) => {
   if (!isoString) return '';
   return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-// We now need the 'socket' prop again to send the 'seen' event
 function MessageItem({ msg, currentUser, socket }) {
-
-  // THIS useEffect IS NOW CRITICAL. It tells the server when a message is viewed.
-  useEffect(() => {
-    // Ensure all data is available before running
-    if (!msg || !msg._id || !socket || !currentUser) return;
-
-    const isMyMessage = msg.author === currentUser;
-    const isAlreadySeen = msg.status === 'seen';
-
-    // If this is a message from someone else, and it's not already 'seen',
-    // then tell the server we have now seen it.
-    if (!isMyMessage && !isAlreadySeen) {
-      socket.emit('message_seen', msg._id);
+  const onEmojiClick = (emojiObject) => {
+    if (msg && msg._id && socket) {
+      const reaction = { emoji: emojiObject.emoji, user: currentUser };
+      socket.emit('message_reacted', { messageId: msg._id, reaction });
     }
-    // We only want this effect to run when the message content itself changes.
-  }, [msg, currentUser, socket]);
+  };
 
   const renderMessageStatus = () => {
     if (msg.author !== currentUser) return null;
@@ -37,18 +47,22 @@ function MessageItem({ msg, currentUser, socket }) {
   };
 
   if (msg.author === 'System') {
-    return (
-      <ListGroup.Item className="border-0 text-center text-muted fst-italic py-1">
-        {msg.text}
-      </ListGroup.Item>
-    );
+    return <ListGroup.Item className="border-0 text-center text-muted fst-italic py-1">{msg.text}</ListGroup.Item>;
   }
 
   const isMyMessage = msg.author === currentUser;
 
+  const emojiPickerPopover = (
+    <Popover id={`popover-basic-${msg._id}`}>
+      <Popover.Body style={{ padding: 0 }}>
+        <EmojiPicker onEmojiClick={onEmojiClick} height={350} width="100%" />
+      </Popover.Body>
+    </Popover>
+  );
+
   return (
-    <ListGroup.Item className="border-0 d-flex flex-column py-1">
-      <div className={`d-flex ${isMyMessage ? 'justify-content-end' : 'justify-content-start'}`}>
+    <ListGroup.Item className="message-list-item border-0 d-flex flex-column py-1">
+      <div className={`d-flex align-items-center ${isMyMessage ? 'justify-content-end' : 'justify-content-start'}`}>
         <div 
           className={`p-2 rounded ${isMyMessage ? 'bg-primary text-white' : 'bg-light text-dark'}`}
           style={{ maxWidth: '70%' }}
@@ -62,6 +76,15 @@ function MessageItem({ msg, currentUser, socket }) {
             </div>
           </div>
         </div>
+        
+        <OverlayTrigger trigger="click" placement="top" overlay={emojiPickerPopover} rootClose>
+          <Button variant="light" size="sm" className="reaction-button border-0 ms-1">
+            <EmojiSmile />
+          </Button>
+        </OverlayTrigger>
+      </div>
+      <div className={`d-flex ${isMyMessage ? 'justify-content-end' : 'justify-content-start'}`}>
+         <Reactions reactions={msg.reactions} />
       </div>
     </ListGroup.Item>
   );

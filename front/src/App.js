@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import ChatPage from './ChatPage';
-// --- NEW: Import the Alert component ---
+
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 
 const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
@@ -15,7 +15,7 @@ function App() {
   const [typingUsers, setTypingUsers] = useState([]);
   const [otherUser, setOtherUser] = useState('');
   
-  // --- NEW: Add state to hold any validation error messages ---
+  
   const [error, setError] = useState('');
 
   const messagesEndRef = useRef(null);
@@ -28,7 +28,7 @@ function App() {
     socket.on('room_users', (users) => setUsersInRoom(users));
     socket.on('typing_start', (user) => setTypingUsers((prev) => [...new Set([...prev, user])]));
     socket.on('typing_stop', (user) => setTypingUsers((prev) => prev.filter((u) => u !== user)));
-    socket.on('message_status_updated', (updatedMessage) => {
+    socket.on('message_updated', (updatedMessage) => {
       setMessages((prevMessages) => 
         prevMessages.map((msg) =>
           msg._id === updatedMessage._id ? updatedMessage : msg
@@ -42,7 +42,7 @@ function App() {
       socket.off('room_users');
       socket.off('typing_start');
       socket.off('typing_stop');
-      socket.off('message_status_updated');
+      socket.off('message_updated');
     };
   }, []);
 
@@ -51,31 +51,31 @@ function App() {
   }, [messages]);
 
 
-  // --- NEW: The handleJoinChat function now includes validation logic ---
+ 
   const handleJoinChat = (e) => {
     e.preventDefault();
-    setError(''); // Clear any previous errors on a new attempt
+    setError(''); 
 
-    // Validation Rule 1: Check for identical names (case-insensitive)
+    
     if (username.trim().toLowerCase() === otherUser.trim().toLowerCase()) {
       setError('Your name and the other user\'s name cannot be the same.');
-      return; // Stop the function
+      return; 
     }
 
-    // Validation Rule 2: Check for minimum length
+    
     if (username.trim().length < 2 || otherUser.trim().length < 2) {
       setError('Both names must be at least 2 characters long.');
-      return; // Stop the function
+      return; 
     }
 
-    // If all validation passes, proceed to join the chat
+    
     const generatedRoomID = [username, otherUser].sort().join('-');
     setRoom(generatedRoomID);
     socket.emit('join_room', { username, room: generatedRoomID });
     setHasJoined(true);
   };
 
-  // The other handlers remain the same
+
   const handleSendMessage = (e) => {
     e.preventDefault();
     const form = e.currentTarget;

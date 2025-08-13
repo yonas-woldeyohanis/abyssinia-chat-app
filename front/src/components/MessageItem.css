@@ -1,0 +1,10 @@
+
+.message-list-item .reaction-button {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+
+.message-list-item:hover .reaction-button {
+  opacity: 1;
+}
