@@ -112,6 +112,34 @@ socket.on('join_room', async (data) => {
     socket.broadcast.to(data.room).emit('typing_stop', data.username);
   });
  
+
+  socket.on('message_reacted', async (data) => {
+    
+    console.log('Received message_reacted event with data:', data); 
+    
+    try {
+      const { messageId, reaction } = data;
+      const message = await Message.findById(messageId);
+
+      if (message) {
+        const existingReactionIndex = message.reactions.findIndex(
+          (r) => r.emoji === reaction.emoji && r.user === reaction.user
+        );
+
+        if (existingReactionIndex > -1) {
+          message.reactions.splice(existingReactionIndex, 1);
+        } else {
+          message.reactions.push(reaction);
+        }
+
+        const updatedMessage = await message.save();
+        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
+      }
+    } catch (error) {
+      console.error('Error handling message reaction:', error);
+    }
+  });
+ 
   socket.on('message_seen', async (messageId) => {
     try {
       const updatedMessage = await Message.findByIdAndUpdate(
@@ -122,7 +150,7 @@ socket.on('join_room', async (data) => {
 
       if (updatedMessage) {
         
-        io.to(updatedMessage.room).emit('message_status_updated', updatedMessage);
+        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
       }
     } catch (error) {
       console.error('Error updating message status:', error);
