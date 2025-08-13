@@ -1,17 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Navbar, Container, Button, Offcanvas, Form, InputGroup } from 'react-bootstrap';
 import UserList from './components/UserList';
 import MessageItem from './components/MessageItem';
-import { PeopleFill } from 'react-bootstrap-icons';
+import { PeopleFill, Paperclip } from 'react-bootstrap-icons';
 
-function ChatPage({ username, room, socket, users, messages, typingUsers, handleSendMessage, handleInputChange, messagesEndRef }) {
+function ChatPage({ username, room, socket, users, messages, typingUsers, handleSendMessage, handleInputChange, handleFileUpload, messagesEndRef }) {
   const [showUsers, setShowUsers] = useState(false);
+  const fileInputRef = useRef(null);
+
   const handleClose = () => setShowUsers(false);
   const handleShow = () => setShowUsers(true);
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
+  const handleUploadClick = () => {
+    fileInputRef.current.click();
+  };
+
   return (
-    <div className="d-flex flex-column h-100 card">
-      {/* Add the custom chat-navbar class here */}
+    <div className="d-flex flex-column h-100 card shadow-sm">
       <Navbar bg="light" expand="lg" className="border-bottom chat-navbar">
         <Container fluid>
           <Button variant="outline-secondary" onClick={handleShow}>
@@ -55,7 +67,16 @@ function ChatPage({ username, room, socket, users, messages, typingUsers, handle
               onChange={handleInputChange}
               autoComplete="off"
             />
+            <Button variant="outline-secondary" onClick={handleUploadClick}>
+              <Paperclip size={20} />
+            </Button>
             <Button variant="primary" type="submit">Send</Button>
+            <Form.Control 
+              type="file" 
+              ref={fileInputRef} 
+              onChange={handleFileSelect} 
+              style={{ display: 'none' }} 
+            />
           </InputGroup>
         </Form>
       </div>

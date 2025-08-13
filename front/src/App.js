@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 import ChatPage from './ChatPage';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import './theme.css';
 
 const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
+const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 function App() {
   const [hasJoined, setHasJoined] = useState(false);
@@ -19,24 +21,23 @@ function App() {
   const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
-    socket.on('chat_history', (history) => setMessages(history));
-    socket.on('chat message', (msg) => setMessages((prev) => [...prev, msg]));
-    socket.on('room_users', (users) => setUsersInRoom(users));
-    socket.on('typing_start', (user) => setTypingUsers((prev) => [...new Set([...prev, user])]));
-    socket.on('typing_stop', (user) => setTypingUsers((prev) => prev.filter((u) => u !== user)));
-    socket.on('message_updated', (updatedMessage) => {
-      setMessages((prevMessages) => 
+    const handleMessageUpdated = (updatedMessage) => {
+      setMessages((prevMessages) =>
         prevMessages.map((msg) =>
           msg._id === updatedMessage._id ? updatedMessage : msg
         )
       );
-    });
+    };
+
+    socket.on('chat_history', (history) => setMessages(history));
+    socket.on('chat message', (msg) => setMessages((prev) => [...prev, msg]));
+    socket.on('room_users', (users) => setUsersInRoom(users));
+    socket.on('message_updated', handleMessageUpdated);
+
     return () => {
       socket.off('chat_history');
       socket.off('chat message');
       socket.off('room_users');
-      socket.off('typing_start');
-      socket.off('typing_stop');
       socket.off('message_updated');
     };
   }, []);
@@ -67,9 +68,30 @@ function App() {
     const form = e.currentTarget;
     const messageInput = form.elements[0];
     if (messageInput.value.trim() && username) {
-      const msgObject = { room, author: username, text: messageInput.value };
+      const msgObject = { room, author: username, text: messageInput.value, type: 'text' };
       socket.emit('chat message', msgObject);
       messageInput.value = '';
+    }
+  };
+  
+  const handleFileUpload = async (file) => {
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('room', room);
+    formData.append('author', username);
+
+    try {
+      const response = await fetch(`${apiUrl}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error('File upload failed');
+      }
+    } catch (uploadError) {
+      console.error('Error uploading file:', uploadError);
+      setError('Sorry, the file could not be uploaded.');
     }
   };
 
@@ -82,7 +104,6 @@ function App() {
   };
 
   return (
-    // Use a standard <Container> which has a max-width and is centered.
     <Container className="d-flex flex-column vh-100 py-4">
       {hasJoined ? (
         <ChatPage
@@ -94,6 +115,7 @@ function App() {
           typingUsers={typingUsers}
           handleSendMessage={handleSendMessage}
           handleInputChange={handleInputChange}
+          handleFileUpload={handleFileUpload}
           messagesEndRef={messagesEndRef}
         />
       ) : (
