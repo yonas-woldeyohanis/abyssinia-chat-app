@@ -1,11 +1,12 @@
 /* front/src/theme.css */
 
-
+/* 1. Set a subtle background color for the entire page */
 body {
   background-color: #f0f2f5 !important; /* A light gray, common in modern apps */
 }
 
-
+/* 2. Style our custom message bubbles */
+/* We will replace Bootstrap's bg-primary and bg-light with these */
 .my-message-bubble {
   background-color: #0084ff; /* A brighter, more modern blue */
   color: white;
@@ -16,7 +17,7 @@ body {
   color: #050505; /* A dark gray for text, not pure black */
 }
 
-
+/* 3. A small tweak to the navbar for better spacing */
 .chat-navbar {
   padding-top: 0.75rem !important;
   padding-bottom: 0.75rem !important;
