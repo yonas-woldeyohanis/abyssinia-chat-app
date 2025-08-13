@@ -3,9 +3,21 @@ const http = require('http');
 const { Server } = require("socket.io");
 const mongoose = require('mongoose');
 const Message = require('./models/message.js');
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
+  api_key: process.env.CLOUDINARY_API_KEY, 
+  api_secret: process.env.CLOUDINARY_API_SECRET 
+});
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 const io = new Server(server, {
   cors: {
@@ -16,42 +28,64 @@ const io = new Server(server, {
 
 const getUsersInRoom = async (room) => {
   const socketsInRoom = await io.in(room).fetchSockets();
-  const users = socketsInRoom.map(socket => socket.data.username);
-  return users;
+  return socketsInRoom.map(socket => socket.data.username);
 };
 
 const MONGO_URI = process.env.MONGO_URI;
+mongoose.connect(MONGO_URI).then(() => console.log('Successfully connected to MongoDB')).catch(err => console.error('Could not connect to MongoDB', err));
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('Successfully connected to MongoDB'))
-  .catch(err => console.error('Could not connect to MongoDB', err));
+app.post('/upload', upload.single('file'), async (req, res) => {
+  try {
+    const { room, author } = req.body;
+    const file = req.file;
+
+    const b64 = Buffer.from(file.buffer).toString('base64');
+    let dataURI = "data:" + file.mimetype + ";base64," + b64;
+    
+    const result = await cloudinary.uploader.upload(dataURI, {
+      resource_type: "auto",
+      public_id: file.originalname
+    });
+
+    const messageType = file.mimetype.startsWith('image/') ? 'image' : 'file';
+
+    const newMessage = new Message({
+      room,
+      author,
+      text: file.originalname,
+      type: messageType,
+      fileUrl: result.secure_url,
+      status: 'sent'
+    });
+
+    const savedMessage = await newMessage.save();
+    io.to(room).emit('chat message', savedMessage);
+    
+    res.status(200).send('File uploaded successfully');
+  } catch (error) {
+    console.error('Error uploading file:', error);
+    res.status(500).send('Error uploading file');
+  }
+});
 
 io.on('connection', (socket) => {
   console.log(`A user connected with ID: ${socket.id}`);
-
   socket.on('join_room', async (data) => {
     const { username, room } = data;
     if (username && room) {
       socket.join(room);
       socket.data.username = username;
       socket.data.room = room;
-      console.log(`User ${username} (${socket.id}) joined room: ${room}`);
-
+      console.log(`User ${username} joined room: ${room}`);
       try {
-        const chatHistory = await Message.find({ room: room }).sort({ timestamp: 'asc' });
+        const chatHistory = await Message.find({ room }).sort({ timestamp: 'asc' });
         socket.emit('chat_history', chatHistory);
       } catch (error) {
         console.error('Error fetching chat history:', error);
       }
-
       const users = await getUsersInRoom(room);
       io.to(room).emit('room_users', users);
-
-      const systemMessage = {
-        author: 'System',
-        text: `${username} has joined the chat.`,
-        timestamp: new Date().toISOString()
-      };
+      const systemMessage = { author: 'System', text: `${username} has joined the chat.`, timestamp: new Date().toISOString() };
       socket.broadcast.to(room).emit('chat message', systemMessage);
     }
   });
@@ -65,7 +99,8 @@ io.on('connection', (socket) => {
         room: data.room,
         author: data.author,
         text: data.text,
-        status: status
+        type: data.type || 'text',
+        status
       });
       const savedMessage = await newMessage.save();
       io.to(data.room).emit('chat message', savedMessage);
@@ -74,12 +109,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('typing_start', (data) => {
-    socket.broadcast.to(data.room).emit('typing_start', data.username);
-  });
-
-  socket.on('typing_stop', (data) => {
-    socket.broadcast.to(data.room).emit('typing_stop', data.username);
+  socket.on('message_seen', async (messageId) => {
+    try {
+      const updatedMessage = await Message.findByIdAndUpdate(messageId, { status: 'seen' }, { new: true });
+      if (updatedMessage) {
+        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
+      }
+    } catch (error) {
+      console.error('Error updating message status:', error);
+    }
   });
 
   socket.on('message_reacted', async (data) => {
@@ -87,9 +125,7 @@ io.on('connection', (socket) => {
       const { messageId, reaction } = data;
       const message = await Message.findById(messageId);
       if (message) {
-        const userPreviousReactionIndex = message.reactions.findIndex(
-          (r) => r.user === reaction.user
-        );
+        const userPreviousReactionIndex = message.reactions.findIndex((r) => r.user === reaction.user);
         if (userPreviousReactionIndex > -1) {
           if (message.reactions[userPreviousReactionIndex].emoji === reaction.emoji) {
             message.reactions.splice(userPreviousReactionIndex, 1);
@@ -106,37 +142,17 @@ io.on('connection', (socket) => {
       console.error('Error handling message reaction:', error);
     }
   });
-
-  socket.on('message_seen', async (messageId) => {
-    try {
-      const updatedMessage = await Message.findByIdAndUpdate(
-        messageId,
-        { status: 'seen' },
-        { new: true }
-      );
-      if (updatedMessage) {
-        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
-      }
-    } catch (error) {
-      console.error('Error updating message status:', error);
-    }
-  });
-
+  
   socket.on('disconnect', async () => {
-    const username = socket.data.username;
-    const room = socket.data.room;
+    const { username, room } = socket.data;
     if (username && room) {
       console.log(`User ${username} disconnected from room ${room}`);
       const users = await getUsersInRoom(room);
       io.to(room).emit('room_users', users);
-      const systemMessage = {
-        author: 'System',
-        text: `${username} has left the chat.`,
-        timestamp: new Date().toISOString()
-      };
+      const systemMessage = { author: 'System', text: `${username} has left the chat.`, timestamp: new Date().toISOString() };
       io.to(room).emit('chat message', systemMessage);
     } else {
-      console.log(`An anonymous user (${socket.id}) disconnected without joining a room.`);
+      console.log(`An anonymous user (${socket.id}) disconnected`);
     }
   });
 });
