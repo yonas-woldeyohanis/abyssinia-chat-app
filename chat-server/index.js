@@ -6,11 +6,9 @@ const Message = require('./models/message.js');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const cors = require('cors');
-
 require('dotenv').config();
 
 const app = express();
-app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
 const server = http.createServer(app);
 
 app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
@@ -62,7 +60,6 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`A user connected with ID: ${socket.id}`);
-  
   socket.on('join_room', async (data) => {
     const { username, room } = data;
     if (username && room) {
@@ -96,12 +93,15 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('typing_start', (data) => {
-    socket.broadcast.to(data.room).emit('typing_start', data.username);
-  });
-
-  socket.on('typing_stop', (data) => {
-    socket.broadcast.to(data.room).emit('typing_stop', data.username);
+  socket.on('message_seen', async (messageId) => {
+    try {
+      const updatedMessage = await Message.findByIdAndUpdate(messageId, { status: 'seen' }, { new: true });
+      if (updatedMessage) {
+        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
+      }
+    } catch (error) {
+      console.error('Error updating message status:', error);
+    }
   });
 
   socket.on('message_reacted', async (data) => {
@@ -127,15 +127,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('message_seen', async (messageId) => {
-    try {
-      const updatedMessage = await Message.findByIdAndUpdate(messageId, { status: 'seen' }, { new: true });
-      if (updatedMessage) {
-        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
-      }
-    } catch (error) {
-      console.error('Error updating message status:', error);
-    }
+  socket.on('typing_start', (data) => {
+    socket.broadcast.to(data.room).emit('typing_start', data.username);
+  });
+  
+  socket.on('typing_stop', (data) => {
+    socket.broadcast.to(data.room).emit('typing_stop', data.username);
   });
   
   socket.on('disconnect', async () => {
