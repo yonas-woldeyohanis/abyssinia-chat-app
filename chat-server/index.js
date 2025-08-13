@@ -6,10 +6,11 @@ const Message = require('./models/message.js');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const cors = require('cors');
-app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
+
 require('dotenv').config();
 
 const app = express();
+app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
 const server = http.createServer(app);
 
 app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
