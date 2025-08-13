@@ -1,14 +1,33 @@
-// front/src/components/MessageItem.js (With Emoji Reactions)
-
 import React from 'react';
 import { ListGroup, OverlayTrigger, Popover, Badge, Button } from 'react-bootstrap';
 import { Check, CheckAll, EmojiSmile } from 'react-bootstrap-icons';
 import EmojiPicker from 'emoji-picker-react';
-import './MessageItem.css'; // Import the component-specific CSS
+import './MessageItem.css';
 
-// This component will group and display the reactions
-const Reactions = ({ reactions }) => {
+// --- THIS COMPONENT IS NOW SMARTER ---
+// It receives more props to handle the click logic internally.
+const Reactions = ({ reactions, currentUser, socket, messageId }) => {
   if (!reactions || reactions.length === 0) return null;
+
+  const handleReactionClick = (emoji) => {
+    // This function runs when a user clicks on a reaction badge.
+    
+    // First, check if the current user is one of the people who made this specific reaction.
+    const userMadeThisReaction = reactions.some(
+      (r) => r.emoji === emoji && r.user === currentUser
+    );
+
+    // If they did, we send the exact same 'message_reacted' event.
+    // The server's existing toggle logic will handle removing it.
+    if (userMadeThisReaction) {
+      socket.emit('message_reacted', {
+        messageId: messageId,
+        reaction: { emoji: emoji, user: currentUser }
+      });
+    }
+    // If they didn't make this reaction, clicking does nothing.
+  };
+
   const reactionSummary = reactions.reduce((summary, reaction) => {
     summary[reaction.emoji] = (summary[reaction.emoji] || 0) + 1;
     return summary;
@@ -17,7 +36,15 @@ const Reactions = ({ reactions }) => {
   return (
     <div className="d-flex gap-1 mt-1">
       {Object.entries(reactionSummary).map(([emoji, count]) => (
-        <Badge pill bg="secondary" text="white" key={emoji} className="d-flex align-items-center">
+        <Badge 
+          pill 
+          bg="secondary" 
+          text="white" 
+          key={emoji} 
+          className="d-flex align-items-center"
+          onClick={() => handleReactionClick(emoji)} // Add the onClick handler
+          style={{ cursor: 'pointer' }} // Add the pointer cursor style
+        >
           {emoji} <span className="ms-1">{count}</span>
         </Badge>
       ))}
@@ -84,7 +111,13 @@ function MessageItem({ msg, currentUser, socket }) {
         </OverlayTrigger>
       </div>
       <div className={`d-flex ${isMyMessage ? 'justify-content-end' : 'justify-content-start'}`}>
-         <Reactions reactions={msg.reactions} />
+         {/* Pass the new props down to the Reactions component */}
+         <Reactions 
+            reactions={msg.reactions} 
+            currentUser={currentUser} 
+            socket={socket} 
+            messageId={msg._id} 
+         />
       </div>
     </ListGroup.Item>
   );
