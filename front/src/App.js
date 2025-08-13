@@ -33,12 +33,16 @@ function App() {
     socket.on('chat message', (msg) => setMessages((prev) => [...prev, msg]));
     socket.on('room_users', (users) => setUsersInRoom(users));
     socket.on('message_updated', handleMessageUpdated);
+    socket.on('typing_start', (user) => setTypingUsers((prev) => [...new Set([...prev, user])]));
+    socket.on('typing_stop', (user) => setTypingUsers((prev) => prev.filter((u) => u !== user)));
 
     return () => {
       socket.off('chat_history');
       socket.off('chat message');
       socket.off('room_users');
       socket.off('message_updated');
+      socket.off('typing_start');
+      socket.off('typing_stop');
     };
   }, []);
 

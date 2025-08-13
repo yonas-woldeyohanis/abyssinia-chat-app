@@ -22,3 +22,14 @@ body {
   padding-top: 0.75rem !important;
   padding-bottom: 0.75rem !important;
 }
+.my-message-bubble {
+  background-color: #0084ff;
+  color: white;
+  word-wrap: break-word; /* <-- ADD THIS LINE */
+}
+
+.other-message-bubble {
+  background-color: #e4e6eb;
+  color: #050505;
+  word-wrap: break-word; /* <-- ADD THIS LINE */
+}
