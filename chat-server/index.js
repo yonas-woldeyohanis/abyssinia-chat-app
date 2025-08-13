@@ -38,7 +38,6 @@ mongoose.connect(MONGO_URI)
   
 
 
-
 io.on('connection', (socket) => {
   console.log(`A user connected with ID: ${socket.id}`);
 
@@ -113,22 +112,28 @@ socket.on('join_room', async (data) => {
   });
  
 
-  socket.on('message_reacted', async (data) => {
-    
-    console.log('Received message_reacted event with data:', data); 
-    
+socket.on('message_reacted', async (data) => {
     try {
       const { messageId, reaction } = data;
       const message = await Message.findById(messageId);
 
       if (message) {
-        const existingReactionIndex = message.reactions.findIndex(
-          (r) => r.emoji === reaction.emoji && r.user === reaction.user
+        
+        const userPreviousReactionIndex = message.reactions.findIndex(
+          (r) => r.user === reaction.user
         );
 
-        if (existingReactionIndex > -1) {
-          message.reactions.splice(existingReactionIndex, 1);
+        if (userPreviousReactionIndex > -1) {
+          
+          if (message.reactions[userPreviousReactionIndex].emoji === reaction.emoji) {
+           
+            message.reactions.splice(userPreviousReactionIndex, 1);
+          } else {
+            
+            message.reactions[userPreviousReactionIndex].emoji = reaction.emoji;
+          }
         } else {
+         
           message.reactions.push(reaction);
         }
 
