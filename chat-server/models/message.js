@@ -1,7 +1,4 @@
-// models/message.js
-
 const mongoose = require('mongoose');
-
 
 const messageSchema = new mongoose.Schema({
   room: { 
@@ -18,16 +15,23 @@ const messageSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    default: 'text' 
+    default: 'text'
   },
   fileUrl: {
     type: String,
     default: ''
   },
-    status: {
+  fileName: {
     type: String,
-    
-    default: 'seen' 
+    default: ''
+  },
+  fileSize: {
+    type: Number,
+    default: 0
+  },
+  status: {
+    type: String,
+    default: 'sent'
   },
   reactions: [
     {
@@ -41,8 +45,6 @@ const messageSchema = new mongoose.Schema({
   }
 });
 
-
 const Message = mongoose.model('Message', messageSchema);
-
 
 module.exports = Message;

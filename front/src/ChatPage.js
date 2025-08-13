@@ -16,6 +16,7 @@ function ChatPage({ username, room, socket, users, messages, typingUsers, handle
     if (file) {
       handleFileUpload(file);
     }
+    e.target.value = null;
   };
 
   const handleUploadClick = () => {

@@ -1,18 +1,23 @@
 import React, { useEffect } from 'react';
 import { ListGroup, OverlayTrigger, Popover, Badge, Button } from 'react-bootstrap';
-import { Check, CheckAll, EmojiSmile, FileEarmarkArrowDown } from 'react-bootstrap-icons';
+import { Check, CheckAll, EmojiSmile, FileEarmarkTextFill, ImageFill } from 'react-bootstrap-icons';
 import EmojiPicker from 'emoji-picker-react';
 import './MessageItem.css';
+
+const formatFileSize = (bytes) => {
+  if (!bytes || bytes === 0) return '';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
 
 const Reactions = ({ reactions, currentUser, socket, messageId }) => {
   if (!reactions || reactions.length === 0) return null;
   const handleReactionClick = (emoji) => {
     const userMadeThisReaction = reactions.some((r) => r.emoji === emoji && r.user === currentUser);
     if (userMadeThisReaction) {
-      socket.emit('message_reacted', {
-        messageId: messageId,
-        reaction: { emoji: emoji, user: currentUser }
-      });
+      socket.emit('message_reacted', { messageId, reaction: { emoji, user: currentUser } });
     }
   };
   const reactionSummary = reactions.reduce((summary, reaction) => {
@@ -35,23 +40,31 @@ const formatTimestamp = (isoString) => {
   return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
-const MessageContent = ({ msg }) => {
-  const isImage = msg.fileUrl && msg.type === 'image';
-  const isFile = msg.fileUrl && msg.type === 'file';
+const FileAttachment = ({ msg, isMyMessage }) => {
+  const isImage = msg.type === 'image';
+  const textColor = isMyMessage ? 'text-white' : 'text-dark';
+  const mutedColor = isMyMessage ? 'text-white-50' : 'text-muted';
 
-  if (isImage) {
-    return <img src={msg.fileUrl} alt={msg.text || 'uploaded image'} style={{ maxWidth: '100%', borderRadius: '8px' }} />;
+  return (
+    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="text-decoration-none d-flex align-items-center p-1">
+      <div className="flex-shrink-0">
+        {isImage ? 
+          <ImageFill size={30} className={mutedColor} /> : 
+          <FileEarmarkTextFill size={30} className={mutedColor} />
+        }
+      </div>
+      <div className="flex-grow-1 ms-3">
+        <div className={`fw-bold ${textColor}`}>{msg.fileName || msg.text}</div>
+        <div className={`small ${mutedColor}`}>{formatFileSize(msg.fileSize)}</div>
+      </div>
+    </a>
+  );
+};
+
+const MessageContent = ({ msg, isMyMessage }) => {
+  if (msg.type === 'image' || msg.type === 'file') {
+    return <FileAttachment msg={msg} isMyMessage={isMyMessage} />;
   }
-
-  if (isFile) {
-    return (
-      <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="text-white text-decoration-underline">
-        <FileEarmarkArrowDown size={20} className="me-2" />
-        {msg.text}
-      </a>
-    );
-  }
-
   return <span className="me-2">{msg.text}</span>;
 };
 
@@ -99,7 +112,7 @@ function MessageItem({ msg, currentUser, socket }) {
         <div className={`p-2 rounded ${isMyMessage ? 'my-message-bubble' : 'other-message-bubble'}`} style={{ maxWidth: '70%' }}>
           {!isMyMessage && <div className="fw-bold small">{msg.author}</div>}
           <div className="d-flex align-items-end">
-            <MessageContent msg={msg} />
+            <MessageContent msg={msg} isMyMessage={isMyMessage} />
             <div className="text-nowrap" style={{ fontSize: '0.7rem', opacity: '0.7' }}>
               {formatTimestamp(msg.timestamp)}
               {isMyMessage && renderMessageStatus()}

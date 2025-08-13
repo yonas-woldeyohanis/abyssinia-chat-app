@@ -5,10 +5,13 @@ const mongoose = require('mongoose');
 const Message = require('./models/message.js');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
+const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -38,29 +41,16 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   try {
     const { room, author } = req.body;
     const file = req.file;
-
     const b64 = Buffer.from(file.buffer).toString('base64');
     let dataURI = "data:" + file.mimetype + ";base64," + b64;
-    
-    const result = await cloudinary.uploader.upload(dataURI, {
-      resource_type: "auto",
-      public_id: file.originalname
-    });
-
+    const result = await cloudinary.uploader.upload(dataURI, { resource_type: "auto", public_id: file.originalname });
     const messageType = file.mimetype.startsWith('image/') ? 'image' : 'file';
-
     const newMessage = new Message({
-      room,
-      author,
-      text: file.originalname,
-      type: messageType,
-      fileUrl: result.secure_url,
-      status: 'sent'
+      room, author, text: file.originalname, type: messageType,
+      fileUrl: result.secure_url, fileName: file.originalname, fileSize: file.size, status: 'sent'
     });
-
     const savedMessage = await newMessage.save();
     io.to(room).emit('chat message', savedMessage);
-    
     res.status(200).send('File uploaded successfully');
   } catch (error) {
     console.error('Error uploading file:', error);
@@ -70,6 +60,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`A user connected with ID: ${socket.id}`);
+  
   socket.on('join_room', async (data) => {
     const { username, room } = data;
     if (username && room) {
@@ -95,13 +86,7 @@ io.on('connection', (socket) => {
       const roomSockets = io.sockets.adapter.rooms.get(data.room);
       const numUsersInRoom = roomSockets ? roomSockets.size : 0;
       const status = numUsersInRoom > 1 ? 'seen' : 'sent';
-      const newMessage = new Message({
-        room: data.room,
-        author: data.author,
-        text: data.text,
-        type: data.type || 'text',
-        status
-      });
+      const newMessage = new Message({ room: data.room, author: data.author, text: data.text, type: data.type || 'text', status });
       const savedMessage = await newMessage.save();
       io.to(data.room).emit('chat message', savedMessage);
     } catch (error) {
@@ -109,15 +94,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('message_seen', async (messageId) => {
-    try {
-      const updatedMessage = await Message.findByIdAndUpdate(messageId, { status: 'seen' }, { new: true });
-      if (updatedMessage) {
-        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
-      }
-    } catch (error) {
-      console.error('Error updating message status:', error);
-    }
+  socket.on('typing_start', (data) => {
+    socket.broadcast.to(data.room).emit('typing_start', data.username);
+  });
+
+  socket.on('typing_stop', (data) => {
+    socket.broadcast.to(data.room).emit('typing_stop', data.username);
   });
 
   socket.on('message_reacted', async (data) => {
@@ -140,6 +122,17 @@ io.on('connection', (socket) => {
       }
     } catch (error) {
       console.error('Error handling message reaction:', error);
+    }
+  });
+
+  socket.on('message_seen', async (messageId) => {
+    try {
+      const updatedMessage = await Message.findByIdAndUpdate(messageId, { status: 'seen' }, { new: true });
+      if (updatedMessage) {
+        io.to(updatedMessage.room).emit('message_updated', updatedMessage);
+      }
+    } catch (error) {
+      console.error('Error updating message status:', error);
     }
   });
   
