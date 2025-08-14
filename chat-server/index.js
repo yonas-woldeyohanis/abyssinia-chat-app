@@ -11,7 +11,17 @@ require('dotenv').config();
 const app = express();
 const server = http.createServer(app);
 
-app.use(cors({ origin: "https://abyssinia-chat-app.vercel.app" }));
+const allowedOrigins = [
+  "https://abyssinia-chat-app.vercel.app",
+  new RegExp(/^https?:\/\/abyssinia-chat-app-.*\.vercel\.app$/)
+];
+
+const corsOptions = {
+  origin: allowedOrigins,
+  methods: ["GET", "POST"]
+};
+
+app.use(cors(corsOptions));
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
@@ -23,10 +33,7 @@ const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 const io = new Server(server, {
-  cors: {
-    origin: "https://abyssinia-chat-app.vercel.app",
-    methods: ["GET", "POST"]
-  }
+  cors: corsOptions
 });
 
 const getUsersInRoom = async (room) => {

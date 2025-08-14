@@ -4,9 +4,7 @@ import ChatPage from './ChatPage';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import './theme.css';
 
-// The single source of truth for our server's address
 const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
-
 const socket = io(SERVER_URL);
 
 function App() {
