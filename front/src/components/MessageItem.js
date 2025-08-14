@@ -46,7 +46,7 @@ const FileAttachment = ({ msg, isMyMessage }) => {
   const mutedColor = isMyMessage ? 'text-white-50' : 'text-muted';
 
   return (
-    <a href={msg.fileUrl} target="_blank" rel="noopener noreferrer" className="text-decoration-none d-flex align-items-center p-1">
+    <a href={msg.fileUrl} download={msg.fileName} target="_blank" rel="noopener noreferrer" className="text-decoration-none d-flex align-items-center p-1">
       <div className="flex-shrink-0">
         {isImage ? 
           <ImageFill size={30} className={mutedColor} /> : 

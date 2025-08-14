@@ -1,4 +1,4 @@
-// This MUST be the very first line to ensure all environment variables are loaded before any other code runs.
+
 require('dotenv').config();
 console.log("--- DEBUGGING .ENV VARIABLES ---");
 console.log(`Cloud Name: |${process.env.CLOUDINARY_CLOUD_NAME}|`);
@@ -62,10 +62,24 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     let dataURI = "data:" + file.mimetype + ";base64," + b64;
     const result = await cloudinary.uploader.upload(dataURI, { resource_type: "auto", public_id: file.originalname });
     const messageType = file.mimetype.startsWith('image/') ? 'image' : 'file';
-    const newMessage = new Message({
-      room, author, text: file.originalname, type: messageType,
-      fileUrl: result.secure_url, fileName: file.originalname, fileSize: file.size, status: 'sent'
-    });
+    let finalUrl = result.secure_url;
+
+if (messageType === 'file') {
+  const urlParts = finalUrl.split('/upload/');
+  
+  finalUrl = `${urlParts[0]}/upload/fl_attachment/${urlParts[1]}`;
+}
+
+const newMessage = new Message({
+  room,
+  author,
+  text: file.originalname,
+  type: messageType,
+  fileUrl: finalUrl, 
+  fileName: file.originalname,
+  fileSize: file.size,
+  status: 'sent'
+});
     const savedMessage = await newMessage.save();
     io.to(room).emit('chat message', savedMessage);
     res.status(200).send('File uploaded successfully');
@@ -75,8 +89,7 @@ app.post('/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// ... The rest of your io.on('connection', ...) code remains exactly the same ...
-// (The full code is below to be safe)
+
 
 io.on('connection', (socket) => {
   console.log(`A user connected with ID: ${socket.id}`);
