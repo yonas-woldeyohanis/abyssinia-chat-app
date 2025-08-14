@@ -65,7 +65,7 @@ const MessageContent = ({ msg, isMyMessage }) => {
   if (msg.type === 'image' || msg.type === 'file') {
     return <FileAttachment msg={msg} isMyMessage={isMyMessage} />;
   }
-  return <span className="me-2 message-text-content">{msg.text}</span>;
+ return <span className="me-2 text-break">{msg.text}</span>;
 };
 
 function MessageItem({ msg, currentUser, socket }) {

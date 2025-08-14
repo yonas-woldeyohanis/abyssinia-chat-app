@@ -1,3 +1,9 @@
+// This MUST be the very first line to ensure all environment variables are loaded before any other code runs.
+require('dotenv').config();
+console.log("--- DEBUGGING .ENV VARIABLES ---");
+console.log(`Cloud Name: |${process.env.CLOUDINARY_CLOUD_NAME}|`);
+console.log("--------------------------------");
+
 const express = require('express');
 const http = require('http');
 const { Server } = require("socket.io");
@@ -42,40 +48,35 @@ const getUsersInRoom = async (room) => {
 };
 
 const MONGO_URI = process.env.MONGO_URI;
+
 mongoose.connect(MONGO_URI).then(() => console.log('Successfully connected to MongoDB')).catch(err => console.error('Could not connect to MongoDB', err));
 
-
 app.post('/upload', upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).send('No file uploaded');
-  if (req.file.size > 10 * 1024 * 1024) return res.status(413).send('File too large (max 10MB)');
-
   try {
-    const b64 = Buffer.from(req.file.buffer).toString('base64');
-    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
-    const result = await cloudinary.uploader.upload(dataURI, {
-      resource_type: "auto",
-      folder: "chat_uploads"
-    });
-    
+    const { room, author } = req.body;
+    const file = req.file;
+    if (!file) {
+      return res.status(400).send('No file uploaded.');
+    }
+    const b64 = Buffer.from(file.buffer).toString('base64');
+    let dataURI = "data:" + file.mimetype + ";base64," + b64;
+    const result = await cloudinary.uploader.upload(dataURI, { resource_type: "auto", public_id: file.originalname });
+    const messageType = file.mimetype.startsWith('image/') ? 'image' : 'file';
     const newMessage = new Message({
-      room: req.body.room,
-      author: req.body.author,
-      text: result.secure_url,
-      type: req.file.mimetype.startsWith('image/') ? 'image' : 'file',
-      fileUrl: result.secure_url,
-      fileName: req.file.originalname,
-      fileSize: req.file.size,
-      status: 'sent'
+      room, author, text: file.originalname, type: messageType,
+      fileUrl: result.secure_url, fileName: file.originalname, fileSize: file.size, status: 'sent'
     });
-
-    await newMessage.save();
-    io.to(req.body.room).emit('chat message', newMessage);
-    res.status(200).send('File uploaded');
-  } catch (err) {
-    console.error('Upload error:', err);
-    res.status(500).send('Upload failed');
+    const savedMessage = await newMessage.save();
+    io.to(room).emit('chat message', savedMessage);
+    res.status(200).send('File uploaded successfully');
+  } catch (error) {
+    console.error('SERVER UPLOAD ERROR:', error);
+    res.status(500).send({ message: 'Error uploading file', error: error.message });
   }
 });
+
+// ... The rest of your io.on('connection', ...) code remains exactly the same ...
+// (The full code is below to be safe)
 
 io.on('connection', (socket) => {
   console.log(`A user connected with ID: ${socket.id}`);
@@ -167,6 +168,7 @@ io.on('connection', (socket) => {
     }
   });
 });
+
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

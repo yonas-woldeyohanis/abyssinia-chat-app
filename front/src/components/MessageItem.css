@@ -8,3 +8,11 @@
 .message-list-item:hover .reaction-button {
   opacity: 1;
 }
+.message-text-content {
+ 
+  word-wrap: break-word;
+  word-break: break-word;
+
+ 
+  white-space: pre-wrap; 
+}

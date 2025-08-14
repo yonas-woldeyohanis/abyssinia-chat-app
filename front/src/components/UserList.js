@@ -6,10 +6,10 @@ function UserList({ users }) {
    
     <ListGroup variant="flush">
       {users.map((user, index) => (
-        <ListGroup.Item key={index} className="border-0">
-          {user}
-        </ListGroup.Item>
-      ))}
+  <ListGroup.Item key={index}> // Add key={index}
+    {user}
+  </ListGroup.Item>
+))}
     </ListGroup>
   );
 }
