@@ -44,24 +44,36 @@ const getUsersInRoom = async (room) => {
 const MONGO_URI = process.env.MONGO_URI;
 mongoose.connect(MONGO_URI).then(() => console.log('Successfully connected to MongoDB')).catch(err => console.error('Could not connect to MongoDB', err));
 
+
 app.post('/upload', upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).send('No file uploaded');
+  if (req.file.size > 10 * 1024 * 1024) return res.status(413).send('File too large (max 10MB)');
+
   try {
-    const { room, author } = req.body;
-    const file = req.file;
-    const b64 = Buffer.from(file.buffer).toString('base64');
-    let dataURI = "data:" + file.mimetype + ";base64," + b64;
-    const result = await cloudinary.uploader.upload(dataURI, { resource_type: "auto", public_id: file.originalname });
-    const messageType = file.mimetype.startsWith('image/') ? 'image' : 'file';
-    const newMessage = new Message({
-      room, author, text: file.originalname, type: messageType,
-      fileUrl: result.secure_url, fileName: file.originalname, fileSize: file.size, status: 'sent'
+    const b64 = Buffer.from(req.file.buffer).toString('base64');
+    const dataURI = `data:${req.file.mimetype};base64,${b64}`;
+    const result = await cloudinary.uploader.upload(dataURI, {
+      resource_type: "auto",
+      folder: "chat_uploads"
     });
-    const savedMessage = await newMessage.save();
-    io.to(room).emit('chat message', savedMessage);
-    res.status(200).send('File uploaded successfully');
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    res.status(500).send('Error uploading file');
+    
+    const newMessage = new Message({
+      room: req.body.room,
+      author: req.body.author,
+      text: result.secure_url,
+      type: req.file.mimetype.startsWith('image/') ? 'image' : 'file',
+      fileUrl: result.secure_url,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      status: 'sent'
+    });
+
+    await newMessage.save();
+    io.to(req.body.room).emit('chat message', newMessage);
+    res.status(200).send('File uploaded');
+  } catch (err) {
+    console.error('Upload error:', err);
+    res.status(500).send('Upload failed');
   }
 });
 

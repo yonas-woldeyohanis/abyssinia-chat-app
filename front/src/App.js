@@ -78,26 +78,26 @@ function App() {
     }
   };
   
-  const handleFileUpload = async (file) => {
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('room', room);
-    formData.append('author', username);
+ 
+const handleFileUpload = async (file) => {
+  if (!file) return;
+  if (file.size > 10 * 1024 * 1024) {
+    setError('File too large (max 10MB)');
+    return;
+  }
 
-    try {
-      const response = await fetch(`${SERVER_URL}/upload`, {
-        method: 'POST',
-        body: formData,
-      });
-      if (!response.ok) {
-        throw new Error('File upload failed');
-      }
-    } catch (uploadError) {
-      console.error('Error uploading file:', uploadError);
-      setError('Sorry, the file could not be uploaded.');
-    }
-  };
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('room', room);
+  formData.append('author', username);
+
+  try {
+    const res = await fetch(`${SERVER_URL}/upload`, { method: 'POST', body: formData });
+    if (!res.ok) throw new Error(await res.text());
+  } catch (err) {
+    setError(err.message);
+  }
+};
 
   const handleInputChange = (e) => {
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
