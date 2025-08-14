@@ -5,8 +5,9 @@ function UserList({ users }) {
   return (
    
     <ListGroup variant="flush">
-      {users.map((user, index) => (
-  <ListGroup.Item key={index}> // Add key={index}
+      
+{users.map((user, index) => (
+  <ListGroup.Item key={index}>
     {user}
   </ListGroup.Item>
 ))}
