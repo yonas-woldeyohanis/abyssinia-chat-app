@@ -4,8 +4,10 @@ import ChatPage from './ChatPage';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import './theme.css';
 
-const socket = io(process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000');
-const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// The single source of truth for our server's address
+const SERVER_URL = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+
+const socket = io(SERVER_URL);
 
 function App() {
   const [hasJoined, setHasJoined] = useState(false);
@@ -86,7 +88,7 @@ function App() {
     formData.append('author', username);
 
     try {
-      const response = await fetch(`${apiUrl}/upload`, {
+      const response = await fetch(`${SERVER_URL}/upload`, {
         method: 'POST',
         body: formData,
       });
